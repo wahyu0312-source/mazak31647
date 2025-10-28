@@ -126,6 +126,17 @@
   .judge-wrap select   { display: none !important; }  /* sembunyikan dropdown */
   input[type="checkbox"] { display: inline-block !important; } /* pastikan kotaknya kelihatan */
 }
+/* Tampilan khusus untuk PDF di kolom 判定: "合/否" + kotak cek berdampingan */
+.judge-print{
+  display:flex; align-items:center; justify-content:center; gap:1.6mm;
+}
+.judge-print .jp-text{
+  font-weight:bold; min-width:4mm; text-align:center; line-height:1;
+}
+.judge-print .jp-ck{
+  width:3.5mm; height:3.5mm; margin:0;
+  -webkit-appearance: checkbox !important; appearance: checkbox !important;
+}
 
 
   </style>
@@ -557,44 +568,66 @@
       const serialNo = sanitize(getSerialFull() || 'no-serial');
       return `${ymd}-${hm}_${customer}_${zuban}_${inputter}_${orderNo}_${serialNo}.pdf`;
     }
-    async function renderFormCanvas(){
+   async function renderFormCanvas(){
   const el = document.querySelector('.b5-preview');
   return html2canvas(el, {
     scale: 2,
     backgroundColor: '#FFFFFF',
     useCORS: true,
     onclone: (doc) => {
-      // Sembunyikan semua .no-print by default
+      // Default: sembunyikan .no-print, tampilkan .print-text
       doc.querySelectorAll('.no-print').forEach(e => e.style.display = 'none');
-      // Tampilkan semua .print-text
       doc.querySelectorAll('.print-text').forEach(e => e.style.display = 'inline');
 
-      // === OVERRIDE khusus agar checkbox 判定 ikut muncul di PDF ===
-      // 1) Tampilkan kontainer checkbox 判定
-      doc.querySelectorAll('.judge-wrap').forEach(w => { w.style.display = 'flex'; });
-      // 2) Sembunyikan dropdown 判定 di clone (biar kotaknya saja yang terlihat)
-      doc.querySelectorAll('.judge-wrap select').forEach(s => { s.style.display = 'none'; });
-      // 3) Pastikan kotak checkbox kelihatan
-      doc.querySelectorAll('.judge-wrap input[type="checkbox"]').forEach(c => {
-        c.style.display = 'inline-block';
-        c.style.appearance = 'checkbox';
-        c.style.webkitAppearance = 'checkbox';
-        c.style.width = '3.5mm';
-        c.style.height = '3.5mm';
-        c.style.margin = '0 0 0 .8mm';
+      // === Khusus kolom 判定: render "合/否" + checkbox berdampingan ===
+      // Ambil nilai asli dari dokumen sumber (bukan clone) supaya statusnya akurat
+      const srcRows = document.querySelectorAll('table tr td:nth-child(3)');
+      const cloneRows = doc.querySelectorAll('table tr td:nth-child(3)');
+
+      cloneRows.forEach((tdClone, i) => {
+        const tdSrc = srcRows[i];
+        if (!tdSrc) return;
+
+        const sel = tdSrc.querySelector('.judge-select');
+        const ck  = tdSrc.querySelector('input[type="checkbox"].done-ck');
+
+        // Lewatkan baris header (nggak punya select)
+        if (!sel || !ck) return;
+
+        const val = (sel.value || '').trim();        // "合" | "否" | ""
+        const done = !!ck.checked;
+
+        // Bangun tampilan khusus untuk PDF
+        const box = doc.createElement('div');
+        box.className = 'judge-print';
+
+        const text = doc.createElement('span');
+        text.className = 'jp-text';
+        text.textContent = val; // tetap kosong kalau belum dipilih
+
+        const cb = doc.createElement('input');
+        cb.type = 'checkbox';
+        cb.className = 'jp-ck';
+        cb.checked = done;
+
+        // Bersihkan isi sel clone → isi dengan layout baru
+        tdClone.innerHTML = '';
+        tdClone.appendChild(box);
+        box.appendChild(text);
+        box.appendChild(cb);
       });
 
-      // === 総合判定: pastikan teksnya sudah diisi (合格/否) ===
-      // (Kalau recomputeFinal() sudah dipanggil, ini hanya safety.)
-      const finalSel = document.querySelector('select[name="final_judgment"]');
-      const finalOut = doc.querySelector('label + select[name="final_judgment"] + span.print-text');
-      if (finalOut) {
-        finalOut.textContent = finalSel?.value || finalOut.textContent || '合格';
-        finalOut.style.display = 'inline';
+      // === Pastikan 総合判定 menampilkan teks (合格/否) ===
+      const finalSelSrc = document.querySelector('select[name="final_judgment"]');
+      const finalOutClone = doc.querySelector('label + select[name="final_judgment"] + span.print-text');
+      if (finalOutClone) {
+        finalOutClone.textContent = finalSelSrc?.value || '';
+        finalOutClone.style.display = 'inline';
       }
     }
   });
 }
+
 
     async function buildPdfDoc(){
       const { jsPDF } = window.jspdf;
