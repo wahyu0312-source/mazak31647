@@ -815,25 +815,39 @@
         stampSel.dispatchEvent(new Event('change', {bubbles:true}));
       }
     }
+    
     function evaluateAll(){
       const finalSel = document.querySelector('select[name="final_judgment"]');
       const kensaSel = document.getElementById('stamp2_sel');
-      const passed = allJudgesOK() && allMeasuresOK();
+
+      const judgeSels = Array.from(document.querySelectorAll('select.judge'));
+      const measureIns = Array.from(document.querySelectorAll('.td-measure-grid input[type="text"]'));
+
+      const judgesFilled = judgeSels.every(s => (s.value||'') !== '');
+      const judgesAllOK  = judgeSels.length>0 && judgeSels.every(s => s.value === '合');
+
+      const measuresFilled = measureIns.every(inp => (inp.value||'').trim() !== '');
+      const measuresValid  = measureIns.every(inp => !inp.classList.contains('invalid'));
+
+      // 総合判定: 全て入力済みなら自動評価。未入力がある場合は変更しない
       if (finalSel){
-        if (passed){
-          finalSel.value = '合格';
-          finalSel.disabled = false;
-        } else {
-          finalSel.disabled = false;
+        if (judgesFilled && measuresFilled && measuresValid){
+          finalSel.value = judgesAllOK ? '合格' : '否';
         }
+        finalSel.disabled = false;
         finalSel.dispatchEvent(new Event('change', {bubbles:true}));
       }
+
+      // 検査印: 総合判定が「合格」になったら有効化し自動選択
       if (kensaSel){
+        const passed = (judgesFilled && measuresFilled && measuresValid && judgesAllOK);
+        const wasDisabled = kensaSel.disabled;
         kensaSel.disabled = !passed;
-        if (passed && !kensaSel.value){
+        if (passed && (wasDisabled || !kensaSel.value)){
           autoPickKensaIn();
         }
       }
+    }
     }
 
     /* ===== INIT & Admin ===== */
@@ -866,6 +880,16 @@
       document.getElementById('stamp2_sel').disabled = true;
       document.querySelector('select[name="inputter"]')?.addEventListener('change', ()=>{ evaluateAll(); });
 
+
+      // Re-evaluate whenever measure inputs change
+      document.querySelectorAll('.td-measure-grid input[type="text"]').forEach(inp=>{
+        inp.addEventListener('change', evaluateAll);
+        inp.addEventListener('input', evaluateAll);
+      });
+      // Re-evaluate when 判定 dropdowns change
+      document.querySelectorAll('select.judge').forEach(sel=>{
+        sel.addEventListener('change', evaluateAll);
+      });
       await ensureHasLockOrAcquire();
       evaluateAll();
     });
