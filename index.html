@@ -226,17 +226,22 @@
           </div></td>
         </tr>
         <tr>
-          <td>Y ストローク(MAX)</td><td>-78 / +78</td>
+          <td>Y ストローク(MAX)</td><td>-78</td>
           <td class="td-measure"><div class="td-measure-grid">
-           <input type="text" inputmode="numeric" name="y_stroke_max"
-       placeholder="-78 / +78"
-       title="Isi hanya -78 atau +78 (dengan tanda)"
-       pattern="^(?:-78|\\+78)$"
-       data-allowed="-78,+78"
-       class="soft-required" data-soft-required="1" />
-
+         <input
+  type="text"  inputmode="text" name="y_stroke_max"  placeholder="-78"  title="Isi hanya -78, +78, atau -78/+78"  pattern="^(?:-78|\\+78|-78/\\+78)$"  data-allowed="-78,+78,-78/+78"  class="soft-required"  data-soft-required="1"  autocomplete="off"/>
             <span>mm</span>
           </div></td>
+          
+        </tr>
+        <tr>
+          <td>Y ストローク(MAX)</td><td>+78</td>
+          <td class="td-measure"><div class="td-measure-grid">
+         <input
+  type="text"  inputmode="text" name="y_stroke_max"  placeholder="+78"  title="Isi hanya -78, +78, atau -78/+78"  pattern="^(?:-78|\\+78|-78/\\+78)$"  data-allowed="-78,+78,-78/+78"  class="soft-required"  data-soft-required="1"  autocomplete="off"/>
+            <span>mm</span>
+          </div></td>
+          
         </tr>
         <tr>
           <td>初期摺動抵抗</td><td>7.0 kg以下</td>
@@ -902,15 +907,19 @@
     if (!(inp instanceof HTMLInputElement)) return;
     if (!inp.matches('.td-measure-grid input[data-allowed]')) return;
 
-    // Normalisasi: izinkan hanya 1 tanda di depan; buang tanda lain
-    let v = (inp.value || '').replace(/[，,]/g,'.').replace(/[．｡。]/g,'.');
-    // Hapus semua kecuali digit, ., +,-
-    v = v.replace(/[^\d.+-]/g, '');
-    // Buang tanda + atau - jika tidak di awal
-    v = v.replace(/(?!^)[+-]/g,'');
-    // Buang titik desimal (untuk kasus ini tidak perlu desimal)
-    v = v.replace(/\./g,'');
-    inp.value = v;
+   // --- ganti potongan ini di allowSignsForAllowedFields ---
+let v = (inp.value || '').replace(/[，,]/g,'.').replace(/[．｡。]/g,'.');
+// Izinkan digit, ., +, -, dan / (untuk -78/+78)
+v = v.replace(/[^\d.+\-\/]/g, '');
+// Buang tanda + atau - jika tidak di awal
+v = v.replace(/(?!^|\/)[+\-]/g,'');
+// Buang titik desimal (tidak dipakai di kasus ini)
+v = v.replace(/\./g,'');
+// Maksimal satu slash
+const parts = v.split('/');
+if (parts.length > 2) v = parts[0] + '/' + parts.slice(1).join('').replace(/\//g,'');
+inp.value = v;
+
   }, true);
 
   // Saat blur: validasi persis sesuai whitelist
@@ -937,14 +946,18 @@
 // hentikan propagasi event "input" ke handler lama yang menghapus tanda +/-,
 // lalu normalisasi versi kita sendiri.
 (function unblockSignsForAllowed(){
-  function normalizeAllowed(v){
-    // izinkan hanya digit dan 1 tanda +/- di depan
-    v = (v || '').replace(/[，,]/g,'.').replace(/[．｡。]/g,'.'); // koma Jepang → titik (aman)
-    v = v.replace(/[^\d+\-]/g, '');  // sisakan digit dan tanda +/- saja
-    // buang semua tanda +/- kecuali yang pertama di depan
-    v = v.replace(/(?!^)[+\-]/g, '');
-    return v;
-  }
+ function normalizeAllowed(v){
+  v = (v || '').replace(/[，,]/g,'.').replace(/[．｡。]/g,'.');
+  // Sisakan digit, +, -, dan /
+  v = v.replace(/[^\d+\-\/]/g, '');
+  // Buang semua tanda +/- kecuali yang pertama di depan
+  v = v.replace(/(?!^|\/)[+\-]/g, '');
+  // Maksimal satu slash
+  const parts = v.split('/');
+  if (parts.length > 2) v = parts[0] + '/' + parts.slice(1).join('').replace(/\//g,'');
+  return v;
+}
+
 
   // CAPTURING handler: jalan paling awal, lalu stopPropagation
   document.addEventListener('input', function(e){
