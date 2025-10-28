@@ -133,15 +133,6 @@ td select,
 td .print-text {
   text-align: left !important;
 }
-/* === WARNINGS (add-only) === */
-.field-warn { font-size: 12px; margin-left: 6px; }
-.warn-missing  { color:#8a6d00; background:#fff5cc; border-radius:4px; padding:0 4px; }
-.warn-fail     { color:#8a0000; background:#ffd6d6; border-radius:4px; padding:0 4px; }
-
-/* highlight border pada elemen bermasalah */
-.warn-outline-missing { outline: 2px dashed #d4b400; outline-offset: 1px; }
-.warn-outline-fail    { outline: 2px solid  #cc0000; outline-offset: 1px; }
-@media print { .field-warn { display:none !important; } }
 
   </style>
  </head>
@@ -950,69 +941,7 @@ window.addEventListener('load', () => {
     if (container.closest('td')) container.closest('td').removeAttribute('title');
   }
 
-  // 判定: empty -> missing, "否" -> fail
-  function validateJudge(){
-    document.querySelectorAll('.judge-select').forEach(sel=>{
-      const td = sel.closest('td') || sel.closest('.judge-wrap')?.closest('td');
-      if (!td) return;
-      clearWarn(td);
-      const badge = ensureBadge(td);
-      if (!sel.value){
-        badge.textContent = '⚠ 未入力';
-        badge.classList.add('warn-missing');
-        td.classList.add('warn-outline-missing');
-        td.title = '判定が未入力です';
-      } else if (sel.value === '否'){
-        // sudah ada pewarnaan merah; tambahkan warning text
-        badge.textContent = '⚠ 基準外';
-        badge.classList.add('warn-fail');
-        td.classList.add('warn-outline-fail');
-        td.title = '判定が基準に適合していません（否）';
-      }
-    });
-  }
-
-  // 測定値: empty -> missing, out-of-range -> fail
-  function validateMeasures(){
-    document.querySelectorAll('.td-measure-grid').forEach(grid=>{
-      clearWarn(grid);
-      const badge = ensureBadge(grid);
-      const inp = grid.querySelector('input[type="text"], input[type="number"]');
-      if (!inp){ return; }
-      const v = (inp.value||'').trim();
-      // baca helper dari patch sebelumnya jika ada
-      const okFn = (typeof isMeasureOK === 'function') ? isMeasureOK : function(){return true;};
-      if (!v){
-        badge.textContent = '⚠ 未入力';
-        badge.classList.add('warn-missing');
-        grid.classList.add('warn-outline-missing');
-        grid.title = '測定値が未入力です';
-      } else if (!okFn(inp)){
-        badge.textContent = '⚠ 基準外';
-        badge.classList.add('warn-fail');
-        grid.classList.add('warn-outline-fail');
-        grid.title = '測定値が基準値の範囲外です';
-      }
-    });
-  }
-
-  // Hook ke recomputeFinal() tanpa mengubah aslinya
-  const _origRecompute2 = window.recomputeFinal;
-  window.recomputeFinal = function(){
-    if (typeof _origRecompute2 === 'function') _origRecompute2.apply(this, arguments);
-    validateJudge();
-    validateMeasures();
-  };
-
-  // Trigger awal
-  window.addEventListener('load', ()=>{ 
-    if (typeof window.recomputeFinal === 'function') window.recomputeFinal();
-  });
-
-  // Pastikan on-change juga memicu validasi
-  document.addEventListener('input',  e=>{ if (e.target.matches('.judge-select, .td-measure-grid input')) window.recomputeFinal(); });
-  document.addEventListener('change', e=>{ if (e.target.matches('.judge-select, .td-measure-grid input')) window.recomputeFinal(); });
-})();
+  
   </script>
 </body>
 </html>
