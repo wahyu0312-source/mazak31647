@@ -120,14 +120,13 @@
     .warn-outline-fail    { outline: 2px solid  #cc0000; outline-offset: 1px; }
     @media print { .field-warn { display:none !important; } }
     /* === Print: tampilkan checkbox di 判定 & 測定値 === */
+/* === Print: tampilkan checkbox di 判定 & 測定値 === */
 @media print {
-  /* Paksa .judge-wrap muncul saat print */
-  .judge-wrap.no-print { display: flex !important; }
-  /* Sembunyikan dropdown-nya, tampilkan hanya checkbox kecil */
-  .judge-wrap select { display: none !important; }
-  /* Checkbox selalu terlihat saat print */
-  input[type="checkbox"] { display: inline-block !important; }
+  .judge-wrap.no-print { display: flex !important; }  /* tampilkan kontainer */
+  .judge-wrap select   { display: none !important; }  /* sembunyikan dropdown */
+  input[type="checkbox"] { display: inline-block !important; } /* pastikan kotaknya kelihatan */
 }
+
 
   </style>
 </head>
@@ -933,6 +932,69 @@
     if (typeof window.markSoftRequired === 'function') window.markSoftRequired();
   }, true);
 })();
+ 
+// === Hard patch: untuk input yang punya data-allowed (mis. ±78),
+// hentikan propagasi event "input" ke handler lama yang menghapus tanda +/-,
+// lalu normalisasi versi kita sendiri.
+(function unblockSignsForAllowed(){
+  function normalizeAllowed(v){
+    // izinkan hanya digit dan 1 tanda +/- di depan
+    v = (v || '').replace(/[，,]/g,'.').replace(/[．｡。]/g,'.'); // koma Jepang → titik (aman)
+    v = v.replace(/[^\d+\-]/g, '');  // sisakan digit dan tanda +/- saja
+    // buang semua tanda +/- kecuali yang pertama di depan
+    v = v.replace(/(?!^)[+\-]/g, '');
+    return v;
+  }
+
+  // CAPTURING handler: jalan paling awal, lalu stopPropagation
+  document.addEventListener('input', function(e){
+    const t = e.target;
+    if (!(t instanceof HTMLInputElement)) return;
+    if (!t.matches('.td-measure-grid input[data-allowed]')) return;
+
+    // hentikan semua handler lain (yang menghapus tanda)
+    e.stopImmediatePropagation();
+    e.stopPropagation();
+
+    const before = t.value;
+    const after  = normalizeAllowed(before);
+    if (before !== after) t.value = after;
+
+    // validasi whitelist ±78
+    const allowed = (t.dataset.allowed || '').split(',').map(s => s.trim());
+    if (allowed.includes(t.value.trim())) {
+      t.setCustomValidity('');
+      t.classList.remove('invalid');
+    } else {
+      // belum cocok → tandai sementara (biar kuning/merah jalan)
+      t.classList.add('invalid');
+    }
+
+    if (typeof window.recomputeFinal === 'function') window.recomputeFinal();
+    if (typeof window.markSoftRequired === 'function') window.markSoftRequired();
+  }, true); // <<— CAPTURE = true
+
+  // Saat blur, pastikan nilainya persis salah satu yang diizinkan
+  document.addEventListener('blur', function(e){
+    const t = e.target;
+    if (!(t instanceof HTMLInputElement)) return;
+    if (!t.matches('.td-measure-grid input[data-allowed]')) return;
+
+    const v = (t.value || '').trim();
+    const allowed = (t.dataset.allowed || '').split(',').map(s => s.trim());
+    if (allowed.includes(v)){
+      t.setCustomValidity('');
+      t.classList.remove('invalid');
+    } else {
+      t.setCustomValidity('Hanya -78 atau +78');
+      t.classList.add('invalid');
+    }
+    if (typeof window.recomputeFinal === 'function') window.recomputeFinal();
+    if (typeof window.markSoftRequired === 'function') window.markSoftRequired();
+  }, true);
+})();
+
+
   </script>
 </body>
 </html>
