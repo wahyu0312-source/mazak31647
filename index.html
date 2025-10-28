@@ -30,10 +30,15 @@
     .header-table input { min-width:0; }
     .ta-left { text-align:left !important; }
 
+    .td-judge { padding:0 !important; }
+    .judge-grid { display:grid; grid-template-columns:1fr auto; align-items:center; gap:1mm; padding:0 1mm; }
+    .judge-grid select { width:100%; }
+    .judge-grid input[type="checkbox"] { margin:0 .5mm; }
 
     .td-measure { padding:0 !important; }
-    .td-measure-grid { display:grid; grid-template-columns:1fr auto; align-items:center; gap:1mm; }
+    .td-measure-grid { display:grid; grid-template-columns:1fr auto auto; align-items:center; gap:1mm; }
     .td-measure-grid input { text-align:right; }
+    .td-measure-grid .measure-check { margin:0 .5mm; }
 
     .inputter-row { display:flex; align-items:center; gap:2mm; margin-bottom:3mm; }
     .inputter-row label { width:12mm; font-weight:bold; }
@@ -57,6 +62,9 @@
     @media (max-width:560px){ .toolbar{ top:8px; gap:6px; padding:6px 8px; } .toolbar button{ padding:6px 10px; font-size:13px; } }
 
     @media print {
+      /* Hide manual checkboxes on print */
+      input[type="checkbox"] { display: none !important; }
+
       @page { size:B5 portrait; margin:12mm; }
       html, body { background:none !important; margin:0 !important; padding:0 !important; }
       .toolbar { display:none !important; }
@@ -78,43 +86,31 @@
     .serial-wrap { display:grid; grid-template-columns:auto 1fr; align-items:center; gap:1mm; }
     .serial-prefix { white-space:nowrap; }
 
-   .soft-required.pending {
-   background-color:#fff7cc;
-   box-shadow:inset 0 0 0 1px #e5b200;
-   transition:background-color .25s ease;
- }
+    .soft-required.pending {
+      background-color:#fff7cc;
+      box-shadow:inset 0 0 0 1px #e5b200;
+      transition:background-color .25s ease;
+    }
     @media print { .soft-required.pending { background:transparent !important; box-shadow:none !important; } }
-  
-  /* === injected: checkbox visuals === */
-  .td-measure-grid { grid-template-columns:auto 1fr auto !important; }
-  .measure-check, .judge-check { width: 3.5mm; height: 3.5mm; accent-color:#333; cursor:pointer; vertical-align:middle; }
 
+    
+    /* --- Ensure checkboxes are visible on screen --- */
+    table input[type="checkbox"],
+    .judge-grid input[type="checkbox"],
+    .td-measure-grid input[type="checkbox"]{
+      -webkit-appearance: checkbox;
+      appearance: checkbox;
+      width: auto;
+      height: auto;
+      padding: 0;
+      border: none;
+      background: initial;
+      box-shadow: none;
+    }
 
-  /* === override: show real checkboxes === */
-  .td-measure-grid input[type="checkbox"], input.judge-check {
-    -webkit-appearance: auto !important;
-    appearance: auto !important;
-    width: 3.5mm !important;
-    height: 3.5mm !important;
-    margin: 0 1mm 0 1mm;
-  }
-  /* Cancel the table input 100% size for checkboxes */
-  table input[type="checkbox"] {
-    width: auto !important;
-    height: auto !important;
-    padding: 0 !important;
-    background: initial !important;
-    box-shadow: none !important;
-  }
-  /* Ensure the grid has a column reserved for the checkbox */
-  .td-measure-grid { grid-template-columns: auto 1fr auto !important; }
-
-
-  /* === 判定の選択セレクタ === */
-  .judge-select { min-width: 44px; padding: 2px 4px; }
-  td select.judge-select { width: auto; }
-
-</style>
+    /* helper for print mirrors of selects */
+    .print-value { min-width:10mm; display:inline-block; text-align:center; }
+  </style>
  </head>
 <body>
   <div class="toolbar">
@@ -124,6 +120,7 @@
     <button type="button" onclick="configureNextSerial()">🔢 番号設定</button>
     <button type="button" onclick="configureDigits()">#️⃣ 桁数設定</button>
     <button type="button" onclick="pickFolder()">📁 フォルダ選択</button>
+    <button type="button" onclick="adminUnlock()">🔓 ロック解除</button>
   </div>
 
   <div id="lock-overlay" style="position:fixed;inset:0;background:rgba(255,255,255,.9);display:none;align-items:center;justify-content:center;z-index:9998;text-align:center;padding:20mm;">
@@ -172,8 +169,6 @@
             <span class="print-text" data-serial-print></span>
           </td>
         </tr>
-
-        
       </table>
 
       <div class="inputter-row no-print">
@@ -187,26 +182,160 @@
         </select>
       </div>
 
+      <!-- 検査項目テーブル（判定: dropdown + checkbox + print mirror） -->
       <table>
         <tr><th>検査項目</th><th>規格</th><th>判定</th></tr>
-        <tr><td>本体取付け寸法</td><td>組立架台取付合わせ確認</td><td><select class="judge-select" title="判定を選択"><option value="合" selected>合</option><option value="否">否</option></select> <span class="judge-static">合</span> <input type="checkbox" class="judge-check" title="チェックリスト（判定）" /></td></tr>
-        <tr><td>摺動テスト</td><td>摺動テスト走り・機能確認</td><td><select class="judge-select" title="判定を選択"><option value="合" selected>合</option><option value="否">否</option></select> <span class="judge-static">合</span> <input type="checkbox" class="judge-check" title="チェックリスト（判定）" /></td></tr>
-        <tr><td>摺動時の異音</td><td>摺動テスト走り時異音の有無確認</td><td><select class="judge-select" title="判定を選択"><option value="合" selected>合</option><option value="否">否</option></select> <span class="judge-static">合</span> <input type="checkbox" class="judge-check" title="チェックリスト（判定）" /></td></tr>
-        <tr><td>外観検査</td><td>キズ・バリの有無目視確認</td><td><select class="judge-select" title="判定を選択"><option value="合" selected>合</option><option value="否">否</option></select> <span class="judge-static">合</span> <input type="checkbox" class="judge-check" title="チェックリスト（判定）" /></td></tr>
-        <tr><td>ワイパーの隙間</td><td>ワイパー材 t=0.05にて確認</td><td><select class="judge-select" title="判定を選択"><option value="合" selected>合</option><option value="否">否</option></select> <span class="judge-static">合</span> <input type="checkbox" class="judge-check" title="チェックリスト（判定）" /></td></tr>
-        <tr><td>ベアリングの確認</td><td>ベアリング脱落確認</td><td><select class="judge-select" title="判定を選択"><option value="合" selected>合</option><option value="否">否</option></select> <span class="judge-static">合</span> <input type="checkbox" class="judge-check" title="チェックリスト（判定）" /></td></tr>
-        <tr><td>皿ネジの出っ張り</td><td>表面の皿ネジの出っ張り確認</td><td><select class="judge-select" title="判定を選択"><option value="合" selected>合</option><option value="否">否</option></select> <span class="judge-static">合</span> <input type="checkbox" class="judge-check" title="チェックリスト（判定）" /></td></tr>
+        <tr>
+          <td>本体取付け寸法</td><td>組立架台取付合わせ確認</td>
+          <td class="td-judge">
+            <div class="judge-grid">
+              <select class="no-print judge" data-judge-row="1" data-print-target="judge_print_1">
+                <option value="">-</option>
+                <option>合</option>
+                <option>否</option>
+              </select>
+              <input type="checkbox" class="judge-check" title="チェック"/>
+            </div>
+            <span class="print-text print-value" data-judge-print id="judge_print_1"></span>
+          </td>
+        </tr>
+        <tr>
+          <td>摺動テスト</td><td>摺動テスト走り・機能確認</td>
+          <td class="td-judge">
+            <div class="judge-grid">
+              <select class="no-print judge" data-judge-row="2" data-print-target="judge_print_2">
+                <option value="">-</option>
+                <option>合</option>
+                <option>否</option>
+              </select>
+              <input type="checkbox" class="judge-check" title="チェック"/>
+            </div>
+            <span class="print-text print-value" data-judge-print id="judge_print_2"></span>
+          </td>
+        </tr>
+        <tr>
+          <td>摺動時の異音</td><td>摺動テスト走り時異音の有無確認</td>
+          <td class="td-judge">
+            <div class="judge-grid">
+              <select class="no-print judge" data-judge-row="3" data-print-target="judge_print_3">
+                <option value="">-</option>
+                <option>合</option>
+                <option>否</option>
+              </select>
+              <input type="checkbox" class="judge-check" title="チェック"/>
+            </div>
+            <span class="print-text print-value" data-judge-print id="judge_print_3"></span>
+          </td>
+        </tr>
+        <tr>
+          <td>外観検査</td><td>キズ・バリの有無目視確認</td>
+          <td class="td-judge">
+            <div class="judge-grid">
+              <select class="no-print judge" data-judge-row="4" data-print-target="judge_print_4">
+                <option value="">-</option>
+                <option>合</option>
+                <option>否</option>
+              </select>
+              <input type="checkbox" class="judge-check" title="チェック"/>
+            </div>
+            <span class="print-text print-value" data-judge-print id="judge_print_4"></span>
+          </td>
+        </tr>
+        <tr>
+          <td>ワイパーの隙間</td><td>ワイパー材 t=0.05にて確認</td>
+          <td class="td-judge">
+            <div class="judge-grid">
+              <select class="no-print judge" data-judge-row="5" data-print-target="judge_print_5">
+                <option value="">-</option>
+                <option>合</option>
+                <option>否</option>
+              </select>
+              <input type="checkbox" class="judge-check" title="チェック"/>
+            </div>
+            <span class="print-text print-value" data-judge-print id="judge_print_5"></span>
+          </td>
+        </tr>
+        <tr>
+          <td>ベアリングの確認</td><td>ベアリング脱落確認</td>
+          <td class="td-judge">
+            <div class="judge-grid">
+              <select class="no-print judge" data-judge-row="6" data-print-target="judge_print_6">
+                <option value="">-</option>
+                <option>合</option>
+                <option>否</option>
+              </select>
+              <input type="checkbox" class="judge-check" title="チェック"/>
+            </div>
+            <span class="print-text print-value" data-judge-print id="judge_print_6"></span>
+          </td>
+        </tr>
+        <tr>
+          <td>皿ネジの出っ張り</td><td>表面の皿ネジの出っ張り確認</td>
+          <td class="td-judge">
+            <div class="judge-grid">
+              <select class="no-print judge" data-judge-row="7" data-print-target="judge_print_7">
+                <option value="">-</option>
+                <option>合</option>
+                <option>否</option>
+              </select>
+              <input type="checkbox" class="judge-check" title="チェック"/>
+            </div>
+            <span class="print-text print-value" data-judge-print id="judge_print_7"></span>
+          </td>
+        </tr>
       </table>
 
+      <!-- 測定テーブル（checkbox 追加） -->
       <table>
         <tr><th>項目</th><th>基準値</th><th>測定値</th></tr>
-        <tr><td>X ストローク(MAX)</td><td>312 mm以上</td><td class="td-measure"><div class="td-measure-grid"><input type="checkbox" class="measure-check" title="チェックリスト（測定値）" /><input type="text" inputmode="numeric" name="b_length" placeholder=">=312" data-min="312" class="soft-required" data-soft-required="1" /><span>mm</span></div></td></tr>
-        <tr><td>X ストローク(MIN)</td><td>112.7 mm以下</td><td class="td-measure"><div class="td-measure-grid"><input type="checkbox" class="measure-check" title="チェックリスト（測定値）" /><input type="text" inputmode="numeric" name="a_length" placeholder="0-112.7" data-min="0" data-max="112.7" class="soft-required" data-soft-required="1" /><span>mm</span></div></td></tr>
-        <tr><td>Y ストローク(MAX)</td><td>156 mm以上</td><td class="td-measure"><div class="td-measure-grid"><input type="checkbox" class="measure-check" title="チェックリスト（測定値）" /><input type="text" inputmode="numeric" name="b_length" placeholder=">=156" data-min="156" class="soft-required" data-soft-required="1" /><span>mm</span></div></td></tr>
-        <tr><td>Y ストローク(MAX)</td><td>315 mm以下</td><td class="td-measure"><div class="td-measure-grid"><input type="checkbox" class="measure-check" title="チェックリスト（測定値）" /><input type="text" inputmode="numeric" name="a_length" placeholder="0-315" data-min="0" data-max="315" class="soft-required" data-soft-required="1" /><span>mm</span></div></td></tr>
-                <tr><td>初期摺動抵抗</td><td>7.0 kg以下</td><td class="td-measure"><div class="td-measure-grid"><input type="checkbox" class="measure-check" title="チェックリスト（測定値）" /><input type="text" inputmode="decimal" step="0.1" name="start_resist" placeholder="0-7.0" data-min="0" data-max="7" class="soft-required" data-soft-required="1" /><span>kg</span></div></td></tr>
-        <tr><td>中期摺動抵抗</td><td>7.0 kg以下</td><td class="td-measure"><div class="td-measure-grid"><input type="checkbox" class="measure-check" title="チェックリスト（測定値）" /><input type="text" inputmode="decimal" step="0.1" name="mid_resist" placeholder="0-7.0" data-min="0" data-max="7" class="soft-required" data-soft-required="1" /><span>kg</span></div></td></tr>
-       
+        <tr><td>X ストローク(MAX)</td><td>312 mm以上</td>
+          <td class="td-measure">
+            <div class="td-measure-grid">
+              <input type="text" inputmode="numeric" name="b_length_xmax" placeholder=">=312" data-min="312" class="soft-required" data-soft-required="1" />
+              <span>mm</span>
+              <input type="checkbox" class="measure-check" title="チェック"/>
+            </div>
+          </td></tr>
+        <tr><td>X ストローク(MIN)</td><td>112.7 mm以下</td>
+          <td class="td-measure">
+            <div class="td-measure-grid">
+              <input type="text" inputmode="numeric" name="a_length_xmin" placeholder="0-112.7" data-min="0" data-max="112.7" class="soft-required" data-soft-required="1" />
+              <span>mm</span>
+              <input type="checkbox" class="measure-check" title="チェック"/>
+            </div>
+          </td></tr>
+        <tr><td>Y ストローク(MAX)</td><td>156 mm以上</td>
+          <td class="td-measure">
+            <div class="td-measure-grid">
+              <input type="text" inputmode="numeric" name="b_length_ymin" placeholder=">=156" data-min="156" class="soft-required" data-soft-required="1" />
+              <span>mm</span>
+              <input type="checkbox" class="measure-check" title="チェック"/>
+            </div>
+          </td></tr>
+        <tr><td>Y ストローク(MAX)</td><td>315 mm以下</td>
+          <td class="td-measure">
+            <div class="td-measure-grid">
+              <input type="text" inputmode="numeric" name="a_length_ymax" placeholder="0-315" data-min="0" data-max="315" class="soft-required" data-soft-required="1" />
+              <span>mm</span>
+              <input type="checkbox" class="measure-check" title="チェック"/>
+            </div>
+          </td></tr>
+        <tr><td>初期摺動抵抗</td><td>7.0 kg以下</td>
+          <td class="td-measure">
+            <div class="td-measure-grid">
+              <input type="text" inputmode="decimal" step="0.1" name="start_resist" placeholder="0-7.0" data-min="0" data-max="7" class="soft-required" data-soft-required="1" />
+              <span>kg</span>
+              <input type="checkbox" class="measure-check" title="チェック"/>
+            </div>
+          </td></tr>
+        <tr><td>中期摺動抵抗</td><td>7.0 kg以下</td>
+          <td class="td-measure">
+            <div class="td-measure-grid">
+              <input type="text" inputmode="decimal" step="0.1" name="mid_resist" placeholder="0-7.0" data-min="0" data-max="7" class="soft-required" data-soft-required="1" />
+              <span>kg</span>
+              <input type="checkbox" class="measure-check" title="チェック"/>
+            </div>
+          </td></tr>
       </table>
 
       <div style="margin:2mm 0;">
@@ -214,7 +343,7 @@
         <select name="final_judgment" class="no-print" style="margin-left:20mm;" disabled>
           <option>合格</option><option>否</option>
         </select>
-        <span class="print-text"></span>
+        <span class="print-text" data-from-select="final_judgment"></span>
       </div>
 
       <div style="margin:2mm 0;">
@@ -225,7 +354,7 @@
       <div class="company-name">東京精密発條株式会社</div>
       <div class="stamp-box-row">
         <div>
-          <select class="no-print" onchange="updateStampPreview('stamp1',this.value)">
+          <select class="no-print" id="stamp1_sel" onchange="updateStampPreview('stamp1',this.value)">
             <option value="">- 印鑑選択 -</option>
             <option value="nakagawa.png">中川部長</option>
             <option value="hasebe.png">長谷部</option>
@@ -238,7 +367,7 @@
           <div class="signature-box"><img id="stamp1" src="" alt=""></div>
         </div>
         <div>
-          <select class="no-print" onchange="updateStampPreview('stamp2',this.value)">
+          <select class="no-print" id="stamp2_sel" onchange="updateStampPreview('stamp2',this.value)" disabled>
             <option value="">- 印鑑選択 -</option>
             <option value="nakagawa.png">中川部長</option>
             <option value="hasebe.png">長谷部</option>
@@ -275,7 +404,7 @@
       ['stamp1','stamp2'].forEach(id => document.getElementById(id).src = '');
       form.querySelectorAll('.td-measure-grid input.invalid').forEach(el => el.classList.remove('invalid'));
 
-      wireDateMirror(); wireEnterNavigationAll(); wireSerialMirror(); wireSoftRequired(); markSoftRequired();
+      wireDateMirror(); wireEnterNavigationAll(); wireSerialMirror(); wireSoftRequired(); markSoftRequired(); mirrorAllSelectsToPrint();
       setTodayIfEmpty('hakkohiduke');
 
       const span = document.querySelector('.serial-prefix');
@@ -283,6 +412,9 @@
       if (Number.isFinite(keepSuffixNum)) setSerialSuffix(keepSuffixNum);
 
       updateSerialPrint();
+      // keep initial disabled state for 検査印
+      document.getElementById('stamp2_sel').disabled = true;
+      evaluateAll();
     }
  async function postLog(action, notes=''){
     const q = s => document.querySelector(s);
@@ -291,7 +423,7 @@
     const serialFull   = (typeof getSerialFull === 'function') ? getSerialFull() : (serialPrefix + serialSuffix);
     const zuban    = (q('input[name="zuban"]')?.value || '').trim();
     const customer = (document.querySelector('.header-table tr:nth-child(1) td:nth-child(2)')?.textContent || '').trim();
-    const orderNo  = (q('input[name="order_no"]')?.value || '').trim();   // form ini ada
+    const orderNo  = (q('input[name="order_no"]')?.value || '').trim();
     const inputter = (q('select[name="inputter"]')?.value || '').trim();
     const fileName = (typeof computeFilename === 'function') ? computeFilename() : '';
     const clientId = (localStorage.getItem('okuma:clientId') || '');
@@ -314,7 +446,7 @@
   }
     /* ===== numeric guards ===== */
     (function wireMeasureValidation(){
-      const fields = document.querySelectorAll('.td-measure-grid input');
+      const fields = document.querySelectorAll('.td-measure-grid input[type="text"]');
       const normalize = s => s.replace(/[，,]/g,'.').replace(/[．｡。]/g,'.');
       fields.forEach(inp=>{
         const allowDec = (inp.getAttribute('step')||'').includes('.');
@@ -329,15 +461,15 @@
         });
         inp.addEventListener('blur',()=>{
           let v = normalize(inp.value);
-          if(v===''){ inp.classList.remove('invalid'); markSoftRequired(); return; }
+          if(v===''){ inp.classList.remove('invalid'); markSoftRequired(); evaluateAll(); return; }
           if(allowDec && /\.$/.test(v)) v=v.replace(/\.$/,'.0');
           const n=parseFloat(v), min=parseFloat(inp.dataset.min ?? '-Infinity'), max=parseFloat(inp.dataset.max ?? 'Infinity');
           const ok=!Number.isNaN(n)&&n>=(Number.isFinite(min)?min:-Infinity)&&n<=(Number.isFinite(max)?max:Infinity);
-          if(!ok){ inp.value=''; inp.classList.add('invalid'); markSoftRequired(); return; }
+          if(!ok){ inp.value=''; inp.classList.add('invalid'); markSoftRequired(); evaluateAll(); return; }
           inp.value = allowDec ? n.toFixed(1).replace(/\.0$/,'.0') : String(Math.trunc(n)).slice(0,MAX_INT_DIGITS);
-          inp.classList.remove('invalid'); markSoftRequired();
+          inp.classList.remove('invalid'); markSoftRequired(); evaluateAll();
         });
-        inp.addEventListener('input', markSoftRequired);
+        inp.addEventListener('input', ()=>{ markSoftRequired(); evaluateAll(); });
       });
     })();
 
@@ -354,9 +486,19 @@
     function wireDateMirror(){
       document.querySelectorAll('input[type="date"]').forEach(inp=>{
         const span=document.querySelector(`.print-text[data-from="${inp.name}"]`); if(!span) return;
-        const fmt=v=>v?v.replace(/(\d{4})-(\d{2})-(\d{2})/,'$1/$2/$3'):'';
-        const upd=()=>span.textContent=fmt(inp.value);
+        const fmt=v=>v?v.replace(/(\d{4})-(\d{2})-(\d{2})/,'$1/$2/$3'):''; const upd=()=>span.textContent=fmt(inp.value);
         inp.addEventListener('change',()=>{ upd(); markSoftRequired(); }); upd();
+      });
+    }
+    function mirrorAllSelectsToPrint(){
+      document.querySelectorAll('select.no-print[data-print-target]').forEach(sel=>{
+        const id=sel.getAttribute('data-print-target'); const out=document.getElementById(id); if(!out) return;
+        const update=()=>{ out.textContent = sel.value || ''; };
+        sel.addEventListener('change', update); update();
+      });
+      document.querySelectorAll('span.print-text[data-from-select]').forEach(span=>{
+        const name = span.getAttribute('data-from-select'); const sel = document.querySelector(`select[name="${name}"]`);
+        if(!sel) return; const upd=()=>span.textContent = sel.value || ''; sel.addEventListener('change', upd); upd();
       });
     }
     function markSoftRequired(){
@@ -377,19 +519,36 @@
       });
     }
 
+    /* ===== 判定 dropdown wiring ===== */
+    function wireJudgeDropdowns(){
+      document.querySelectorAll('select.judge').forEach(sel=>{
+        if (sel.dataset.judgeWired === '1') return;
+        sel.dataset.judgeWired = '1';
+        const printTarget = sel.getAttribute('data-print-target');
+        const out = printTarget ? document.getElementById(printTarget) : null;
+        const updatePrint = ()=>{ if(out) out.textContent = sel.value || ''; };
+        sel.addEventListener('change', ()=>{ updatePrint(); evaluateAll(); });
+        updatePrint();
+      });
+      // manual checklist wiring (no logic impact)
+      document.querySelectorAll('.judge-check').forEach(chk=>{
+        if (chk.dataset.judgeCheckWired === '1') return;
+        chk.dataset.judgeCheckWired = '1';
+        chk.addEventListener('change', ()=>{});
+      });
+    }
+
     /* ===== Serial / Prefix ===== */
     function getActivePrefix(){ return (localStorage.getItem(ACTIVE_PREFIX_KEY) || '').trim(); }
     const getSerialPrefix = () => document.querySelector('.serial-prefix')?.textContent?.trim() || '';
     const getZuban = () => (document.querySelector('input[name="zuban"]').value || '').trim();
 
-    // 6 digit dari 図番 → "282520-"
     function computePrefixFromZuban(z){
       const m = String(z||'').replace(/\D/g,'').match(/^(\d{6})/);
       return m ? `${m[1]}-` : '';
     }
     function prefixReady(){ return /^\d{6}-$/.test(getSerialPrefix()); }
 
-    // BERSIHKAN nilai lama yang salah (mis: "2825-")
     (function cleanBadAdminPrefix(){
       const ap = localStorage.getItem(ACTIVE_PREFIX_KEY);
       if (ap && !/^\d{6}-$/.test(ap)) localStorage.removeItem(ACTIVE_PREFIX_KEY);
@@ -403,7 +562,7 @@
       if (valid) {
         span.textContent = adminPref;
       } else {
-        if (adminPref) localStorage.removeItem(ACTIVE_PREFIX_KEY); // buang nilai salah
+        if (adminPref) localStorage.removeItem(ACTIVE_PREFIX_KEY);
         const pref = computePrefixFromZuban(getZuban());
         span.textContent = pref;
       }
@@ -466,7 +625,7 @@
     }
 
     /* ===== Lock ===== */
-    const LOCK_TTL_SEC = 120; let __lockId = null; let __lockTimer = null;
+    const LOCK_TTL_SEC = 120; let __lockId = null; let __lockTimer = null; let __adminUnlocked = false;
     function getClientId(){ const k='okuma:clientId'; let id=localStorage.getItem(k); if(!id){ id=crypto.randomUUID(); localStorage.setItem(k,id);} return id; }
     function setEditingEnabled(enabled){ const disabled = !enabled; const form=document.getElementById('inspection-form'); form.querySelectorAll('input,select,textarea,button').forEach(el=>{ el.disabled = disabled; }); }
     function showLockOverlay(show){ const ov=document.getElementById('lock-overlay'); if(ov){ ov.style.display = show? 'flex':'none'; } }
@@ -487,13 +646,21 @@
       __lockId=null; if(__lockTimer){ clearInterval(__lockTimer); __lockTimer=null; }
     }
     async function ensureHasLockOrAcquire(){
-if (!prefixReady()) { applyPrefix(); if (!prefixReady()) return false; }
- const prefix = serverPrefix();
+      if(__adminUnlocked) { showLockOverlay(false); setEditingEnabled(true); return true; }
+      if (!prefixReady()) { applyPrefix(); if (!prefixReady()) return false; }
+      const prefix = serverPrefix();
       if(__lockId) return true;
       const ok = await acquireSharedLock(prefix);
       if(!ok){ showLockOverlay(true); setEditingEnabled(false); }
       else { showLockOverlay(false); setEditingEnabled(true); }
       return ok;
+    }
+    function adminUnlock(){
+      __adminUnlocked = true;
+      showLockOverlay(false);
+      setEditingEnabled(true);
+      releaseSharedLock();
+      alert('ロックを解除しました（管理者）。編集可能です。');
     }
 
     /* ===== PDF ===== */
@@ -523,20 +690,20 @@ if (!prefixReady()) { applyPrefix(); if (!prefixReady()) return false; }
       return doc;
     }
     async function printViaPDF(){
-     if (window.__busy) return;
-  window.__busy = true;
-  try{
-    const ok = await ensureHasLockOrAcquire();
-    if(!ok){ alert('現在ほかの端末が使用中のため、印刷できません。'); return; }
-    await assignNextSerialSuffix();
-    const doc = await buildPdfDoc();
-    if(doc.autoPrint) doc.autoPrint();
-    const blobUrl = doc.output('bloburl');
-    window.open(blobUrl, '_blank');
-    postLog('PRINT');
-  } finally {
-    window.__busy = false;
-  }
+      if (window.__busy) return;
+      window.__busy = true;
+      try{
+        const ok = await ensureHasLockOrAcquire();
+        if(!ok){ alert('現在ほかの端末が使用中のため、印刷できません。'); return; }
+        await assignNextSerialSuffix();
+        const doc = await buildPdfDoc();
+        if(doc.autoPrint) doc.autoPrint();
+        const blobUrl = doc.output('bloburl');
+        window.open(blobUrl, '_blank');
+        postLog('PRINT');
+      } finally {
+        window.__busy = false;
+      }
     }
 
     /* ===== Save to NAS (Y軸) ===== */
@@ -568,55 +735,105 @@ if (!prefixReady()) { applyPrefix(); if (!prefixReady()) return false; }
       return dir || null;
     }
     async function saveToNASFixed(){
-     if (window.__busy) return;
-  window.__busy = true;
-  try{
-    const ok = await ensureHasLockOrAcquire();
-    if(!ok){ alert('現在ほかの端末が使用中のため、保存できません。'); return; }
-    await assignNextSerialSuffix();
-    const fileName = computeFilename();
-    // Fallback: browser tanpa File System Access API
-    if(!window.showDirectoryPicker){
-      const doc = await buildPdfDoc(); doc.save(fileName);
-      postLog('SAVE','fallback-download');
-      return;
-    }
-    try{
-      let dir = await ensureDir();
-      if(!dir){
-        const doc = await buildPdfDoc(); doc.save(fileName);
-        postLog('SAVE','fallback-download-no-dir');
-        return;
-      }
-      let perm = await dir.queryPermission?.({ mode:'readwrite' });
-      if(perm!=='granted'){
-        perm = await dir.requestPermission?.({ mode:'readwrite' });
-        if(perm!=='granted'){
+      if (window.__busy) return;
+      window.__busy = true;
+      try{
+        const ok = await ensureHasLockOrAcquire();
+        if(!ok){ alert('現在ほかの端末が使用中のため、保存できません。'); return; }
+        await assignNextSerialSuffix();
+        const fileName = computeFilename();
+        if(!window.showDirectoryPicker){
           const doc = await buildPdfDoc(); doc.save(fileName);
-          postLog('SAVE','fallback-download-no-permission');
+          postLog('SAVE','fallback-download');
           return;
         }
+        try{
+          let dir = await ensureDir();
+          if(!dir){
+            const doc = await buildPdfDoc(); doc.save(fileName);
+            postLog('SAVE','fallback-download-no-dir');
+            return;
+          }
+          let perm = await dir.queryPermission?.({ mode:'readwrite' });
+          if(perm!=='granted'){
+            perm = await dir.requestPermission?.({ mode:'readwrite' });
+            if(perm!=='granted'){
+              const doc = await buildPdfDoc(); doc.save(fileName);
+              postLog('SAVE','fallback-download-no-permission');
+              return;
+            }
+          }
+          const rawPrefix = getSerialPrefix();
+          const suffixStr = (document.querySelector('input[name="serial_no_suffix"]').value || '').trim();
+          const numeric = parseInt(suffixStr.replace(/^0+/,'') || '0', 10);
+          const dupe = await serialExists(dir, sanitize(rawPrefix), numeric);
+          if(dupe){ alert(`同じ製造Noのファイルが既に存在します:\n${dupe}\n保存を中止しました。`); return; }
+          const doc = await buildPdfDoc();
+          const fh = await dir.getFileHandle(fileName, { create:true });
+          const w = await fh.createWritable();
+          await w.write(doc.output('blob')); await w.close();
+          const t=new Date();
+          alert(`保存しました: ${fileName}\n時刻: ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`);
+          postLog('SAVE');
+        }catch(e){
+          console.error('NAS write failed; fallback to download.', e);
+          const doc = await buildPdfDoc(); doc.save(fileName);
+          postLog('SAVE','fallback-download-error');
+        }
+      } finally {
+        window.__busy = false;
       }
-      const rawPrefix = getSerialPrefix(); // '282520-'
-      const suffixStr = (document.querySelector('input[name="serial_no_suffix"]').value || '').trim();
-      const numeric = parseInt(suffixStr.replace(/^0+/,'') || '0', 10);
-      const dupe = await serialExists(dir, sanitize(rawPrefix), numeric);
-      if(dupe){ alert(`同じ製造Noのファイルが既に存在します:\n${dupe}\n保存を中止しました。`); return; }
-      const doc = await buildPdfDoc();
-      const fh = await dir.getFileHandle(fileName, { create:true });
-      const w = await fh.createWritable();
-      await w.write(doc.output('blob')); await w.close();
-      const t=new Date();
-      alert(`保存しました: ${fileName}\n時刻: ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`);
-      postLog('SAVE');
-   }catch(e){
-      console.error('NAS write failed; fallback to download.', e);
-      const doc = await buildPdfDoc(); doc.save(fileName);
-      postLog('SAVE','fallback-download-error');
     }
-  } finally {
-    window.__busy = false;
-  }
+
+    /* ===== Auto rules: 総合判定 & 検査印 ===== */
+    function allJudgesOK(){
+      const sels = Array.from(document.querySelectorAll('select.judge'));
+      if (sels.length === 0) return false;
+      return sels.every(s => s.value === '合');
+    }
+    function allMeasuresOK(){
+      const ins = Array.from(document.querySelectorAll('.td-measure-grid input[type="text"]'));
+      if (ins.length === 0) return false;
+      return ins.every(inp => (inp.value || '').trim() !== '' && !inp.classList.contains('invalid'));
+    }
+    const INPUTTER_TO_STAMP = {
+      '中川部長':'nakagawa.png',
+      '長谷部':'hasebe.png',
+      '石橋':'ishibashi.png',
+      '都合':'togo.png',
+      'ワーユ':'wahyu.png',
+      'ユスフ':'yusuf.png'
+    };
+    function autoPickKensaIn(){
+      const inputterSel = document.querySelector('select[name="inputter"]');
+      const stampSel = document.getElementById('stamp2_sel');
+      if(!stampSel) return;
+      const who = inputterSel?.value || '';
+      const file = INPUTTER_TO_STAMP[who] || '';
+      if (file){
+        stampSel.value = file;
+        stampSel.dispatchEvent(new Event('change', {bubbles:true}));
+      }
+    }
+    function evaluateAll(){
+      const finalSel = document.querySelector('select[name="final_judgment"]');
+      const kensaSel = document.getElementById('stamp2_sel');
+      const passed = allJudgesOK() && allMeasuresOK();
+      if (finalSel){
+        if (passed){
+          finalSel.value = '合格';
+          finalSel.disabled = false;
+        } else {
+          finalSel.disabled = false;
+        }
+        finalSel.dispatchEvent(new Event('change', {bubbles:true}));
+      }
+      if (kensaSel){
+        kensaSel.disabled = !passed;
+        if (passed && !kensaSel.value){
+          autoPickKensaIn();
+        }
+      }
     }
 
     /* ===== INIT & Admin ===== */
@@ -625,6 +842,13 @@ if (!prefixReady()) { applyPrefix(); if (!prefixReady()) return false; }
       setTodayIfEmpty('hakkohiduke');
       applyPrefix();
       wireSoftRequired(); markSoftRequired();
+      wireJudgeDropdowns(); mirrorAllSelectsToPrint();
+
+      document.querySelectorAll('.td-measure-grid .measure-check').forEach(chk=>{
+        if (chk.dataset.wired === '1') return;
+        chk.dataset.wired = '1';
+        chk.addEventListener('change', ()=>{});
+      });
 
       document.querySelector('input[name="zuban"]')?.addEventListener('change', async ()=>{
         applyPrefix();
@@ -639,7 +863,11 @@ if (!prefixReady()) { applyPrefix(); if (!prefixReady()) return false; }
         if (typeof info?.digits === 'number' && info.digits >= 1) PAD_DIGITS = info.digits;
       }catch(e){}
 
+      document.getElementById('stamp2_sel').disabled = true;
+      document.querySelector('select[name="inputter"]')?.addEventListener('change', ()=>{ evaluateAll(); });
+
       await ensureHasLockOrAcquire();
+      evaluateAll();
     });
 
     function setTodayIfEmpty(name){
@@ -685,283 +913,5 @@ if (!prefixReady()) { applyPrefix(); if (!prefixReady()) return false; }
       }catch(e){ alert('設定に失敗しました: ' + (e.message || e)); }
     }
   </script>
-
-  <script>
-  (function(){
-    function allOK(){
-      const fields = Array.from(document.querySelectorAll('.td-measure-grid input[type="text"]'));
-      if (!fields.length) return false;
-      for (const inp of fields){
-        const v = (inp.value||'').trim(); if (!v) return false;
-        const n = Number(v); if (!isFinite(n)) return false;
-        const min = parseFloat(inp.dataset.min ?? '-Infinity');
-        const max = parseFloat(inp.dataset.max ?? 'Infinity');
-        if (isFinite(min) && n < min) return false;
-        if (isFinite(max) && n > max) return false;
-        if (inp.classList.contains('invalid')) return false;
-      }
-      return true;
-    }
-    function setGouKaku(){
-      const sel = document.querySelector('select[name="final_judgment"]');
-      if (sel){ sel.value='合格'; sel.dispatchEvent(new Event('change',{bubbles:true})); 
-        const t = sel.parentElement?.querySelector('.print-text'); if (t) t.textContent='合格';
-      }
-    }
-    function nameToStamp(n){
-      const map={'中川部長':'nakagawa.png','長谷部':'hasebe.png','石橋':'ishibashi.png','都合':'togo.png','ワーユ':'wahyu.png','ユスフ':'yusuf.png'};
-      return map[n]||'';
-    }
-    function tryEnableStamp(){
-      const selects=document.querySelectorAll('.stamp-box-row select');
-      const kensa=selects?.[1]; if(!kensa) return;
-      if(allOK()){
-        kensa.disabled=false;
-        const who=(document.querySelector('select[name="inputter"]')?.value||'').trim();
-        const v=nameToStamp(who); if(v){ kensa.value=v; if (typeof updateStampPreview==='function') updateStampPreview('stamp2', v);}
-      }else{
-        kensa.disabled=true; kensa.value=''; if (typeof updateStampPreview==='function') updateStampPreview('stamp2', '');
-      }
-    }
-    function recompute(){ if(allOK()) setGouKaku(); tryEnableStamp(); }
-    function wire(){
-      document.querySelectorAll('.td-measure-grid input[type="text"]').forEach(inp=>{
-        inp.addEventListener('input', recompute); inp.addEventListener('blur', recompute);
-      });
-      document.querySelectorAll('select[name="inputter"]').forEach(s=>s.addEventListener('change', recompute));
-      const selects=document.querySelectorAll('.stamp-box-row select'); if(selects[1]) selects[1].disabled=true;
-      recompute();
-    }
-    if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded', wire);} else { wire(); }
-  })();
-  </script>
-
-
-<script>
-// === Quick unlock overlay helper (admin) ===
-(function(){
-  function tryClearLocalLocks(){
-    try {
-      for (let i=0;i<localStorage.length;i++){
-        const k = localStorage.key(i);
-        if (!k) continue;
-        if (/:lock\b/i.test(k) || /\block[:_]/i.test(k) || /form(lock|_lock)/i.test(k) || /editor(lock|_lock)/i.test(k)){
-          try { localStorage.removeItem(k); } catch(e){}
-        }
-      }
-      // also try sessionStorage
-      for (let i=0;i<sessionStorage.length;i++){
-        const k = sessionStorage.key(i);
-        if (!k) continue;
-        if (/:lock\b/i.test(k) || /\block[:_]/i.test(k) || /form(lock|_lock)/i.test(k) || /editor(lock|_lock)/i.test(k)){
-          try { sessionStorage.removeItem(k); } catch(e){}
-        }
-      }
-    } catch(e) {}
-  }
-  function forceUnlock(){
-    // Call built-ins if available
-    if (typeof breakLock === 'function') { try { breakLock(); } catch(_) {} }
-    if (typeof releaseLock === 'function') { try { releaseLock(true); } catch(_) {} }
-    if (typeof unlockForm === 'function') { try { unlockForm(); } catch(_) {} }
-    tryClearLocalLocks();
-
-    // hide overlay if visible
-    const overlay = document.querySelector('.lock-overlay, .form-lock-overlay');
-    if (overlay){ overlay.remove(); }
-    // re-enable inputs
-    document.querySelectorAll('input, select, textarea, button').forEach(el => { el.disabled = false; el.readOnly = false; });
-    window._forceUnlocked = true;
-  }
-
-  function addButton(){
-    // only add if overlay text contains the Japanese notice
-    const overlay = document.querySelector('.lock-overlay, .form-lock-overlay') || Array.from(document.querySelectorAll('*')).find(el => /他の端末で編集中/.test(el.textContent || ''));
-    if (!overlay) return;
-    if (document.getElementById('btnForceUnlock')) return;
-    const btn = document.createElement('button');
-    btn.id = 'btnForceUnlock';
-    btn.textContent = 'ロック解除（管理者）';
-    Object.assign(btn.style, {position:'fixed', right:'24px', top:'24px', zIndex:999999, padding:'8px 12px', borderRadius:'8px'});
-    btn.addEventListener('click', forceUnlock);
-    document.body.appendChild(btn);
-  }
-
-  // add a small timeout to wait for overlay to render
-  const iv = setInterval(addButton, 500);
-  setTimeout(()=>clearInterval(iv), 10000);
-})();
-</script>
-
-
-<script>
-(function(){
-  function syncJudge(e){
-    const sel = e.target;
-    const span = sel.parentElement.querySelector('.judge-static');
-    if (span) span.textContent = sel.value;
-  }
-  function initJudgeSelects(){
-    document.querySelectorAll('select.judge-select').forEach(sel=>{
-      sel.addEventListener('change', syncJudge);
-    });
-  }
-  if (document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded', initJudgeSelects);
-  } else {
-    initJudgeSelects();
-  }
-})();
-</script>
-
-
-<script>
-// === 強化ルール ===
-// 1) Optional: set default 「否」 for specific rows by keyword match
-const DEFAULT_DENY_KEYS = []; // e.g., ["外観検査","ペアリングの確認"]
-
-(function(){
-  // helper: check all 測定値 valid (excluding checkboxes)
-  function allMeasureValuesValid(){
-    const fields = Array.from(document.querySelectorAll('.td-measure-grid input[type="text"], .td-measure-grid input[type="number"]'));
-    if (!fields.length) return false;
-    for (const inp of fields){
-      const v = (inp.value||'').trim();
-      if (!v) return false;
-      const n = Number(v);
-      if (!isFinite(n)) return false;
-      const min = parseFloat(inp.dataset.min ?? '-Infinity');
-      const max = parseFloat(inp.dataset.max ?? 'Infinity');
-      if (isFinite(min) && n < min) return false;
-      if (isFinite(max) && n > max) return false;
-      if (inp.classList.contains('invalid')) return false;
-    }
-    return true;
-  }
-  function allJudgeArePass(){
-    const sels = Array.from(document.querySelectorAll('select.judge-select'));
-    if (!sels.length) return false;
-    return sels.every(s=>s.value === '合');
-  }
-  function setFinalOK(){
-    const sel = document.querySelector('select[name="final_judgment"]');
-    if (sel){
-      sel.value = '合格';
-      sel.dispatchEvent(new Event('change', { bubbles:true }));
-      const span = sel.parentElement?.querySelector('.print-text');
-      if (span) span.textContent = '合格';
-    }
-  }
-  function clearKensa(){
-    const selects = document.querySelectorAll('.stamp-box-row select');
-    const kensaSelect = selects?.[1];
-    if (kensaSelect){
-      kensaSelect.disabled = true;
-      kensaSelect.value = '';
-      if (typeof updateStampPreview === 'function') updateStampPreview('stamp2', '');
-    }
-  }
-  function enableKensa(){
-    const selects = document.querySelectorAll('.stamp-box-row select');
-    const kensaSelect = selects?.[1];
-    if (kensaSelect){
-      kensaSelect.disabled = false;
-    }
-  }
-  function recomputeStrongRules(){
-    const ok = allMeasureValuesValid() && allJudgeArePass();
-    if (ok){
-      setFinalOK();
-      enableKensa();
-    } else {
-      clearKensa();
-      // do not auto-set 総合判定 if not ok; leave as operator set or previous value
-    }
-  }
-  function wireStrong(){
-    // default 「否」 for configured rows
-    if (DEFAULT_DENY_KEYS.length){
-      document.querySelectorAll('select.judge-select').forEach(sel=>{
-        const rowText = sel.closest('tr')?.innerText || '';
-        if (DEFAULT_DENY_KEYS.some(k=> rowText.includes(k))){
-          sel.value = '否';
-          const span = sel.parentElement?.querySelector('.judge-static'); if (span) span.textContent = '否';
-        }
-      });
-    }
-    // rewire events
-    document.querySelectorAll('.td-measure-grid input[type="text"], .td-measure-grid input[type="number"]').forEach(inp=>{
-      inp.addEventListener('input', recomputeStrongRules);
-      inp.addEventListener('blur', recomputeStrongRules);
-    });
-    document.querySelectorAll('select.judge-select').forEach(sel=> sel.addEventListener('change', recomputeStrongRules));
-    recomputeStrongRules();
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wireStrong); else wireStrong();
-})();
-</script>
-
-
-<!-- ===== FULL UI UNLOCK (safe & focused) ===== -->
-<style>
-/* Allow clicks even if a 'locked' class/attr applied */
-html.locked, body.locked, [data-locked="true"] { pointer-events: auto !important; filter: none !important; opacity: 1 !important; }
-html.locked *, body.locked *, [data-locked="true"] * { pointer-events: auto !important; }
-/* Hide common overlay classes */
-.lock-overlay, .form-lock-overlay, .overlay, .veil, .backdrop { display: none !important; }
-</style>
-<script>
-(function(){
-  function isFullscreen(el){
-    try{
-      const r = el.getBoundingClientRect();
-      const vw = Math.max(document.documentElement.clientWidth, window.innerWidth||0);
-      const vh = Math.max(document.documentElement.clientHeight, window.innerHeight||0);
-      return r.width >= vw*0.8 && r.height >= vh*0.8 && (getComputedStyle(el).position === 'fixed' || getComputedStyle(el).position === 'absolute');
-    }catch(_){ return false; }
-  }
-  function fullyUnlockUI(){
-    // 1) Remove known overlays
-    document.querySelectorAll('.lock-overlay, .form-lock-overlay, .overlay, .veil, .backdrop')
-      .forEach(n => { try { n.remove(); } catch(e){} });
-    // 2) Remove any fullscreen, click-blocking layer
-    Array.from(document.body.children).forEach(el=>{
-      const cs = getComputedStyle(el);
-      if (isFullscreen(el) && (cs.pointerEvents === 'none' || parseFloat(cs.opacity) < 0.5 || cs.zIndex >= 999)){
-        // avoid removing main app root
-        if (!/app|root|main|container/i.test(el.id+ ' ' + el.className)) { try { el.remove(); } catch(e){} }
-      }
-    });
-    // 3) Re-enable controls
-    document.querySelectorAll('input, select, textarea, button').forEach(el=>{
-      el.disabled = false; el.readOnly = false; el.style.pointerEvents='auto';
-    });
-    // remove locked markers
-    document.documentElement.classList.remove('locked'); document.body.classList.remove('locked');
-    document.documentElement.removeAttribute('data-locked'); document.body.removeAttribute('data-locked');
-  }
-  function addUnlockButton(){
-    if (document.getElementById('btnFullUnlock')) return;
-    const b = document.createElement('button');
-    b.id = 'btnFullUnlock';
-    b.textContent = 'クリック無効を解除';
-    Object.assign(b.style, {position:'fixed', right:'24px', top:'24px', zIndex: 2147483647, padding:'8px 12px', borderRadius:'8px'});
-    b.addEventListener('click', fullyUnlockUI);
-    document.body.appendChild(b);
-  }
-  function init(){
-    addUnlockButton();
-    // Try multiple times in case overlay appears late
-    let n=0; const iv = setInterval(()=>{ fullyUnlockUI(); if(++n>10) clearInterval(iv); }, 400);
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
-})();
-</script>
-
 </body>
 </html>
-
-
-
-
-
