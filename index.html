@@ -105,6 +105,10 @@ input[type="checkbox"] {
 
 /* Saat 測定値 punya checkbox, jadikan 3 kolom: [input][unit][checkbox] */
 .td-measure-grid.has-ck { grid-template-columns: 1fr auto auto; }
+/* Sel 判定 jadi merah jika nilai = 否 */
+td.judge-ng {
+  background: #ffd6d6 !important;   /* merah muda agar teks tetap terbaca */
+}
 
   </style>
  </head>
@@ -810,7 +814,35 @@ window.addEventListener('load', () => {
   addMeasureCheckboxes();     // checkbox kecil di 測定値
   recomputeFinal();           // set state awal
 });
+// === Tambahan: warnai kolom 判定 merah saat nilai = 否 (tanpa ubah kode existing) ===
+(function judgeColoringPatch(){
+  function applyJudgeColoring(){
+    document.querySelectorAll('.judge-select').forEach(sel => {
+      // cari sel <td> terdekat dari dropdown 判定
+      const td = sel.closest('td') || sel.closest('.judge-wrap')?.closest('td');
+      if (!td) return;
+      if (sel.value === '否') td.classList.add('judge-ng');
+      else td.classList.remove('judge-ng');
+    });
+  }
 
+  // Panggil tiap kali ada perubahan di dropdown 判定
+  document.addEventListener('change', (e) => {
+    if (e.target && e.target.classList && e.target.classList.contains('judge-select')) {
+      applyJudgeColoring();
+    }
+  });
+
+  // Hook ke recomputeFinal() tanpa mengubah isi aslinya
+  const _origRecompute = window.recomputeFinal;
+  window.recomputeFinal = function(){
+    if (typeof _origRecompute === 'function') _origRecompute.apply(this, arguments);
+    applyJudgeColoring();
+  };
+
+  // Set tampilan awal setelah halaman siap
+  window.addEventListener('load', applyJudgeColoring);
+})();
 
   </script>
 </body>
