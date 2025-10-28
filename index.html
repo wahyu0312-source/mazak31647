@@ -558,10 +558,44 @@
       return `${ymd}-${hm}_${customer}_${zuban}_${inputter}_${orderNo}_${serialNo}.pdf`;
     }
     async function renderFormCanvas(){
-      const el=document.querySelector('.b5-preview');
-      return html2canvas(el,{ scale:2, backgroundColor:'#FFFFFF', useCORS:true,
-        onclone:(doc)=>{ doc.querySelectorAll('.no-print').forEach(e=>e.style.display='none'); doc.querySelectorAll('.print-text').forEach(e=>e.style.display='inline'); }});
+  const el = document.querySelector('.b5-preview');
+  return html2canvas(el, {
+    scale: 2,
+    backgroundColor: '#FFFFFF',
+    useCORS: true,
+    onclone: (doc) => {
+      // Sembunyikan semua .no-print by default
+      doc.querySelectorAll('.no-print').forEach(e => e.style.display = 'none');
+      // Tampilkan semua .print-text
+      doc.querySelectorAll('.print-text').forEach(e => e.style.display = 'inline');
+
+      // === OVERRIDE khusus agar checkbox 判定 ikut muncul di PDF ===
+      // 1) Tampilkan kontainer checkbox 判定
+      doc.querySelectorAll('.judge-wrap').forEach(w => { w.style.display = 'flex'; });
+      // 2) Sembunyikan dropdown 判定 di clone (biar kotaknya saja yang terlihat)
+      doc.querySelectorAll('.judge-wrap select').forEach(s => { s.style.display = 'none'; });
+      // 3) Pastikan kotak checkbox kelihatan
+      doc.querySelectorAll('.judge-wrap input[type="checkbox"]').forEach(c => {
+        c.style.display = 'inline-block';
+        c.style.appearance = 'checkbox';
+        c.style.webkitAppearance = 'checkbox';
+        c.style.width = '3.5mm';
+        c.style.height = '3.5mm';
+        c.style.margin = '0 0 0 .8mm';
+      });
+
+      // === 総合判定: pastikan teksnya sudah diisi (合格/否) ===
+      // (Kalau recomputeFinal() sudah dipanggil, ini hanya safety.)
+      const finalSel = document.querySelector('select[name="final_judgment"]');
+      const finalOut = doc.querySelector('label + select[name="final_judgment"] + span.print-text');
+      if (finalOut) {
+        finalOut.textContent = finalSel?.value || finalOut.textContent || '合格';
+        finalOut.style.display = 'inline';
+      }
     }
+  });
+}
+
     async function buildPdfDoc(){
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'b5' });
@@ -781,7 +815,7 @@
         if (finalSel){ finalSel.value = '否'; }
         if (kensaStampSelect){
           kensaStampSelect.disabled = true; kensaStampSelect.value = '';
-          if (stampImg) stampImg.src = '';
+          if (stampImg) stampImg.src = ''; syncFinalPrintText();
         }
       }
 
@@ -841,6 +875,8 @@
       setTodayIfEmpty('hakkohiduke');
       applyPrefix();
       wireSoftRequired(); markSoftRequired();
+  recomputeFinal();
+  syncFinalPrintText();   // <- sinkron awal untuk kasus PDF pertama kali
 
       // Build 判定 & 測定値 enhancement
       upgradeJudgeColumn();
@@ -1006,7 +1042,11 @@ inp.value = v;
     if (typeof window.markSoftRequired === 'function') window.markSoftRequired();
   }, true);
 })();
-
+function syncFinalPrintText(){
+    const finalSel = document.querySelector('select[name="final_judgment"]');
+    const finalOut = document.querySelector('label + select[name="final_judgment"] + span.print-text');
+    if (finalOut) finalOut.textContent = finalSel?.value || '';
+  }
 
   </script>
 </body>
