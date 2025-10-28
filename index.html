@@ -109,6 +109,30 @@ input[type="checkbox"] {
 td.judge-ng {
   background: #ffd6d6 !important;   /* merah muda agar teks tetap terbaca */
 }
+/* ==== Left-align tulisan di tabel (labels, nilai, input) ==== */
+table td,
+table th {
+  text-align: left !important;
+  vertical-align: middle;
+}
+
+/* Kecualikan judul besar agar tetap di tengah (kalau ada) */
+h1.title, .doc-title { text-align: center !important; }
+
+/* 判定: rapikan kontennya ke kiri (override sebelumnya yang center) */
+.judge-wrap { justify-content: flex-start !important; }
+
+/* Grid 測定値: konten rata kiri juga */
+.td-measure-grid { justify-items: start; text-align: left; }
+
+/* Input di dalam sel ikut kiri (beberapa browser mewarisi center) */
+td input[type="text"],
+td input[type="number"],
+td input[type="date"],
+td select,
+td .print-text {
+  text-align: left !important;
+}
 
   </style>
  </head>
