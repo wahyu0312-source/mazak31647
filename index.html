@@ -119,6 +119,16 @@
     .warn-outline-missing { outline: 2px dashed #d4b400; outline-offset: 1px; }
     .warn-outline-fail    { outline: 2px solid  #cc0000; outline-offset: 1px; }
     @media print { .field-warn { display:none !important; } }
+    /* === Print: tampilkan checkbox di 判定 & 測定値 === */
+@media print {
+  /* Paksa .judge-wrap muncul saat print */
+  .judge-wrap.no-print { display: flex !important; }
+  /* Sembunyikan dropdown-nya, tampilkan hanya checkbox kecil */
+  .judge-wrap select { display: none !important; }
+  /* Checkbox selalu terlihat saat print */
+  input[type="checkbox"] { display: inline-block !important; }
+}
+
   </style>
 </head>
 
@@ -219,11 +229,13 @@
         <tr>
           <td>Y ストローク(MAX)</td><td>-78 / +78</td>
           <td class="td-measure"><div class="td-measure-grid">
-            <input type="text" inputmode="numeric" name="y_stroke_max"
-                   placeholder="-78 / +78" pattern="^(?:-78|\\+78)$"
-                   title="Hanya -78 atau +78"
-                   data-allowed="-78,+78"
-                   class="soft-required" data-soft-required="1" />
+           <input type="text" inputmode="numeric" name="y_stroke_max"
+       placeholder="-78 / +78"
+       title="Isi hanya -78 atau +78 (dengan tanda)"
+       pattern="^(?:-78|\\+78)$"
+       data-allowed="-78,+78"
+       class="soft-required" data-soft-required="1" />
+
             <span>mm</span>
           </div></td>
         </tr>
@@ -883,6 +895,44 @@
         alert(`桁数を ${n} に設定しました。`);
       }catch(e){ alert('設定に失敗しました: ' + (e.message || e)); }
     }
+    // === Patch: izinkan tanda +/- untuk input yang punya data-allowed (mis. ±78) ===
+(function allowSignsForAllowedFields(){
+  // Saat mengetik: jangan buang tanda +/- untuk input dengan data-allowed
+  document.addEventListener('input', function(e){
+    const inp = e.target;
+    if (!(inp instanceof HTMLInputElement)) return;
+    if (!inp.matches('.td-measure-grid input[data-allowed]')) return;
+
+    // Normalisasi: izinkan hanya 1 tanda di depan; buang tanda lain
+    let v = (inp.value || '').replace(/[，,]/g,'.').replace(/[．｡。]/g,'.');
+    // Hapus semua kecuali digit, ., +,-
+    v = v.replace(/[^\d.+-]/g, '');
+    // Buang tanda + atau - jika tidak di awal
+    v = v.replace(/(?!^)[+-]/g,'');
+    // Buang titik desimal (untuk kasus ini tidak perlu desimal)
+    v = v.replace(/\./g,'');
+    inp.value = v;
+  }, true);
+
+  // Saat blur: validasi persis sesuai whitelist
+  document.addEventListener('blur', function(e){
+    const inp = e.target;
+    if (!(inp instanceof HTMLInputElement)) return;
+    if (!inp.matches('.td-measure-grid input[data-allowed]')) return;
+
+    const allowed = (inp.dataset.allowed || '').split(',').map(s=>s.trim());
+    const v = (inp.value || '').trim();
+    if (allowed.includes(v)) {
+      inp.setCustomValidity('');
+      inp.classList.remove('invalid');
+    } else {
+      inp.setCustomValidity('Hanya -78 atau +78');
+      inp.classList.add('invalid');
+    }
+    if (typeof window.recomputeFinal === 'function') window.recomputeFinal();
+    if (typeof window.markSoftRequired === 'function') window.markSoftRequired();
+  }, true);
+})();
   </script>
 </body>
 </html>
